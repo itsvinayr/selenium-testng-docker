@@ -2,41 +2,45 @@ pipeline {
 
     agent any
 
+    parameters {
+        choice(
+            name: 'browser',
+            choices: ['chrome', 'firefox', 'edge'],
+            description: 'Select browser'
+        )
+
+        choice(
+            name: 'execution',
+            choices: ['grid', 'local'],
+            description: 'Execution mode'
+        )
+    }
+
     stages {
 
         stage('Start Selenium Grid') {
+            when {
+                expression { params.execution == 'grid' }
+            }
             steps {
                 bat 'docker compose up -d'
             }
         }
 
-        stage('Wait for Grid') {
-            steps {
-                bat '''
-                :wait
-                curl http://localhost:4444/status > nul 2>&1
-                if errorlevel 1 (
-                    ping 127.0.0.1 -n 2 > nul
-                    goto wait
-                )
-                '''
-            }
-        }
-
         stage('Run Selenium Tests') {
             steps {
-                bat "mvn clean test -Dbrowser=${params.browser}"
+                bat "mvn clean test -Dbrowser=${params.browser} -Dexecution=${params.execution}"
             }
         }
     }
 
     post {
-
         always {
-
-            bat 'docker compose down'
-
+            script {
+                if (params.execution == 'grid') {
+                    bat 'docker compose down'
+                }
+            }
         }
-
     }
 }
