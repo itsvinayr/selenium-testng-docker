@@ -25,7 +25,7 @@ pipeline {
 
         stage('Run Selenium Tests') {
             steps {
-                bat 'mvn clean test'
+                bat "mvn clean test -Dbrowser=${params.browser}"
             }
         }
     }
