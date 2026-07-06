@@ -16,27 +16,26 @@ import utils.ConfigReader;
 
 public class DriverFactory {
 
-    private static WebDriver driver;
+    private static final ThreadLocal<WebDriver> driver = new ThreadLocal<>();
 
-    public static WebDriver initDriver() {
+    public static WebDriver initDriver(String browser) {
 
         String execution = ConfigReader.get("execution");
-        String browser = ConfigReader.get("browser");
 
         try {
 
             if ("grid".equalsIgnoreCase(execution)) {
 
                 System.out.println("Running on Selenium Grid...");
-                driver = createRemoteDriver(browser);
+                driver.set(createRemoteDriver(browser));
 
             } else {
 
                 System.out.println("Running Locally...");
-                driver = createLocalDriver(browser);
+                driver.set(createLocalDriver(browser));
 
-                // Maximize only for local execution
-                driver.manage().window().maximize();
+                driver.get().manage().window().maximize();
+
             }
 
         } catch (Exception e) {
@@ -46,12 +45,14 @@ public class DriverFactory {
         }
 
         System.out.println("--------------------------------");
-        System.out.println("Driver Type : " + driver.getClass().getSimpleName());
+        System.out.println("Thread Id   : " + Thread.currentThread().getId());
+        System.out.println("Driver Type : " + driver.get().getClass().getSimpleName());
         System.out.println("Browser     : " + browser);
         System.out.println("Execution   : " + execution);
         System.out.println("--------------------------------");
 
-        return driver;
+        return driver.get();
+
     }
 
     private static WebDriver createLocalDriver(String browser) {
@@ -61,27 +62,17 @@ public class DriverFactory {
             case "chrome":
 
                 WebDriverManager.chromedriver().setup();
-
-                ChromeOptions chromeOptions = new ChromeOptions();
-                chromeOptions.addArguments("--start-maximized");
-
-                return new ChromeDriver(chromeOptions);
+                return new ChromeDriver(new ChromeOptions());
 
             case "firefox":
 
                 WebDriverManager.firefoxdriver().setup();
-
-                FirefoxOptions firefoxOptions = new FirefoxOptions();
-
-                return new FirefoxDriver(firefoxOptions);
+                return new FirefoxDriver(new FirefoxOptions());
 
             case "edge":
 
                 WebDriverManager.edgedriver().setup();
-
-                EdgeOptions edgeOptions = new EdgeOptions();
-
-                return new EdgeDriver(edgeOptions);
+                return new EdgeDriver(new EdgeOptions());
 
             default:
 
@@ -99,21 +90,21 @@ public class DriverFactory {
 
             case "chrome":
 
-                ChromeOptions chromeOptions = new ChromeOptions();
-
-                return new RemoteWebDriver(new URL(gridUrl), chromeOptions);
+                return new RemoteWebDriver(
+                        new URL(gridUrl),
+                        new ChromeOptions());
 
             case "firefox":
 
-                FirefoxOptions firefoxOptions = new FirefoxOptions();
-
-                return new RemoteWebDriver(new URL(gridUrl), firefoxOptions);
+                return new RemoteWebDriver(
+                        new URL(gridUrl),
+                        new FirefoxOptions());
 
             case "edge":
 
-                EdgeOptions edgeOptions = new EdgeOptions();
-
-                return new RemoteWebDriver(new URL(gridUrl), edgeOptions);
+                return new RemoteWebDriver(
+                        new URL(gridUrl),
+                        new EdgeOptions());
 
             default:
 
@@ -125,16 +116,16 @@ public class DriverFactory {
 
     public static WebDriver getDriver() {
 
-        return driver;
+        return driver.get();
 
     }
 
     public static void quitDriver() {
 
-        if (driver != null) {
+        if (driver.get() != null) {
 
-            driver.quit();
-            driver = null;
+            driver.get().quit();
+            driver.remove();
 
         }
 
